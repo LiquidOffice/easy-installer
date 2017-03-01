@@ -30,6 +30,7 @@
 	$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS				= 5;
 	error_reporting(E_ALL | E_STRICT);
 	ini_set("display_errors", "Off");
+	header("Access-Control-Allow-Origin: *");
 	$URL_TO_CURRENT_VERSION_NUMBER_FILE					= "http://dev.ilia.ch/liquid-office/plugin/current_version_number.txt";
 	$INLINE_COMMENT										= "inline";
 	$MULTILINE_COMMENT_START							= "multi-start";
