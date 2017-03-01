@@ -19,7 +19,8 @@
    
 ## usage [easy_installation.php](https://github.com/LiquidOffice/easy-installer/blob/master/easy_installation.php)
 
-= script to perform the installation
+= script to perform the installation/allows for smooth ajax controller, because each installation step needs to be
+triggered from client side, so client knows current percentage of installation performed
 
 1..x perform installation step by step:
    - a .... whether user is ADMIN (0=false, 1=true), e.g.: a=1
