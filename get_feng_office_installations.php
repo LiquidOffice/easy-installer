@@ -2,6 +2,7 @@
 
 //error_reporting(E_ALL);	//DEBUG
 //ini_set("display_errors", true);	//DEBUG
+header("Access-Control-Allow-Origin: *");
 
 $host_name									= $_REQUEST['h'];
 $user_name									= !empty($_REQUEST['u']) && ctype_alnum($_REQUEST['u']) ? $_REQUEST['u'] : "";	// check for security reasons
