@@ -37,14 +37,14 @@
    - zp ... zip file path
    
    **returns:  an json object, with the following mandatory members:**
-	 **- "ajx_output"		: string, that will be included in details (log) of easy installation front-end**
+	 - "ajx_output"		: string, that will be included in details (log) of easy installation front-end
 	 - "ajx_success"		: boolean, specifies whether installation has been completed successfully
 	 - "ajx_nextstep"		: next step, that needs to be taken
 
-	 the following members are optional:
+	 **the following members are optional:**
 	 - "ajx_progress"		: progress in percent (= percent of already, successfully taken installation steps)
 	 - "ajx_ns_add_cgi"	: additional cgi-paremter for next step
 	 - "ajx_msg"			: string, that will be displayed to inform user or collect information from him
 	 - "ajx_ns_msg_ok"	: next step, that shall be taken, if user confirms [ajx_msg]
 	 - "ajx_ns_msg_cancel": next step, that shall be taken, if user cancels [ajx_msg]
-	 - "ajx_debug"		: if debug info is available, it is stored here**
+	 - "ajx_debug"		: if debug info is available, it is stored here
