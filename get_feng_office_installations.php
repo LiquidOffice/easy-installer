@@ -8,6 +8,7 @@ $user_name									= !empty($_REQUEST['u']) && ctype_alnum($_REQUEST['u']) ? $_R
 $password									= empty($_REQUEST['s']) ? "" : $_REQUEST['s'];	// s from secret
 $port										= !empty($_REQUEST['p']) && ctype_digit($_REQUEST['p']) ? $_REQUEST['p'] : "";
 $path_to_test								= empty($_REQUEST['ptt']) ? "" : $_REQUEST['ptt'];
+$return_json								= empty($_REQUEST['j']) ? false : true;
 
 if(stripos($host_name, "secure.ilia.ch") !== false ||
    stripos($host_name, "www.ilia.ch") !== false ||
@@ -107,7 +108,7 @@ function get_www_roots() {
 	//print_r($unique_destinations);	//DEBUG
 	//echo "</pre>";	//DEBUG
 	
-	$copy_of_unique_destinations	= $unique_destinations;
+	$copy_of_unique_destinations			= $unique_destinations;
 	$indexes_to_delete	= array();
 	
 	for($i = 0; $i < count($unique_destinations); $i++) {
@@ -130,10 +131,11 @@ function get_www_roots() {
 
 
 function check_whether_ptt_is_fo_path($path_to_test) {
-	global									$password, $user_name, $host_name, $port, $return_value_messages;
+	global									$password, $user_name, $host_name, $port, $return_value_messages, $return_json;
 	$command_to_execute_remotely			= "find -O3 {$path_to_test} -name init.php 2>/dev/null | xargs grep -l \\\"define('PRODUCT_NAME', 'Feng\\\"";
 	$run_command							= "sshpass -p '$password' ssh -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
 	$output									= array();
+	$feng_office_paths						= array();
 	
 	exec($run_command, $output, $return_value);
 	//echo "run_command = " . $run_command . "; output = " . $output . "; return_value = " . $return_value;	//DEBUG
@@ -162,13 +164,21 @@ function check_whether_ptt_is_fo_path($path_to_test) {
 		
 		//print "<p>Path of feng installation " . $i++ . " = $match</p>";	//DEBUG
 		if(isset($match[1])) {
-			$feng_office_path					=  $match[1];
-			$feng_office_path_html				= preg_replace('/(.*\/)(.*)/', "$1<span style=\"font-weight:bold;\" fo-path=\"{$feng_office_path}\">$2</span>", $feng_office_path);
-			$return_value					   .= "<div class=\"easy_installation_form_fo_inst_path\" fo-path=\"{$feng_office_path}\">{$feng_office_path_html}</div>";
+			$feng_office_path				= $match[1];
+			if(!$return_json) { 
+				$feng_office_path_html		= preg_replace('/(.*\/)(.*)/', "$1<span style=\"font-weight:bold;\" fo-path=\"{$feng_office_path}\">$2</span>", $feng_office_path);
+				$return_value			   .= "<div class=\"easy_installation_form_fo_inst_path\" fo-path=\"{$feng_office_path}\">{$feng_office_path_html}</div>";
+			} else {
+				array_push($feng_office_paths, $feng_office_path);
+			}
 		}
 	}
 
-	return $return_value;
+	if(!$return_json) {
+		return $return_value;
+	} else {
+		return json_encode($feng_office_paths);
+	}
 }
 
 
