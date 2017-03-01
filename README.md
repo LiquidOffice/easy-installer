@@ -35,8 +35,9 @@
    - t .... installation STEP, e.g.: t=0 (first step)
    - u .... username, e.g.: u=user
    - zp ... zip file path
-   **returns:  an json object, with the following mandatory members:
-	 - "ajx_output"		: string, that will be included in details (log) of easy installation front-end
+   
+   **returns:  an json object, with the following mandatory members:**
+	 **- "ajx_output"		: string, that will be included in details (log) of easy installation front-end**
 	 - "ajx_success"		: boolean, specifies whether installation has been completed successfully
 	 - "ajx_nextstep"		: next step, that needs to be taken
 
