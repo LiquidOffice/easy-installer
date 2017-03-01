@@ -22,7 +22,7 @@
 	 *   - are NOT included in the (array)$installation_procedure
 	 *   - do NOT return an json object
 	 *   
-	 * (C) 2014, 2015 Sebastian Reimer for Liquid Office
+	 * (C) 2017 Sebastian Reimer for Liquid Office
 	 * 
 	 */
 
@@ -35,21 +35,90 @@
 	$MULTILINE_COMMENT_START							= "multi-start";
 	$MULTILINE_COMMENT_END								= "multi-end";
 	
-	$installation_step									= !empty($_REQUEST['t']) && ctype_digit($_REQUEST['t']) ? $_REQUEST['t'] : 0;	//TODO: abort installation if not a valid number
-	$webserver_run_user									= empty($_REQUEST['r']) ? "" : $_REQUEST['r'];	// cannot check with ctype_alphnum, because then users with "_" for example cannot be used
-	$host_name											= empty($_REQUEST['h']) ? "" : $_REQUEST['h'];
-	$user_name											= empty($_REQUEST['u']) ? "" : $_REQUEST['u'];	// cannot check with ctype_alphnum, because then users with "_" for example cannot be used
-	$password											= empty($_REQUEST['s']) ? "" : $_REQUEST['s'];	// s from secret
-	$port												= !empty($_REQUEST['p']) && ctype_digit($_REQUEST['p']) ? $_REQUEST['p'] : 22;
+	// CGI-parameter: a = $is_admin
+	$is_admin											= !empty($_REQUEST['a']) && $_REQUEST['a'] == "1" ? true : false;
+	// CGI-parameter: d = $display_step
+	$display_step										= !empty($_REQUEST['d']) && ctype_digit($_REQUEST['d']) ? $_REQUEST['d'] : 0;
+	// CGI-parameter: f = $feng_office_path
 	$feng_office_path									= empty($_REQUEST['f']) ? "" : $_REQUEST['f'];
+	if ($feng_office_path != '/' && ($feng_office_path[0] != '/' || $feng_office_path[strlen($feng_office_path)-1] == '/' || strpos($feng_office_path, '//') > -1)) {
+		$feedback_to_client['ajx_output']		   .= _negative_feedback("invalid feng office path specified");
+		$feedback_to_client['ajx_success']			= (bool)false;
+		$feedback_to_client['ajx_nextstep']			= 0;
+		$feedback_to_client['ajx_progress']			= 0;
+		$feedback_to_client['ajx_ns_add_cgi']		= "";
+		
+		if($DEBUG)
+			$feedback_to_client['ajx_debug']		= _get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'host_name port user_name password feng_office_path current_step current_title server_config_path nginx_config_dir')));
+		
+			die(json_encode($feedback_to_client));
+	}
 	$feng_office_path									= _assure_that_path_contains_slashes($feng_office_path);
 	$feng_office_path									= _remove_last_char_if_it_is_slash($feng_office_path);
-	$display_step										= !empty($_REQUEST['d']) && ctype_digit($_REQUEST['d']) ? $_REQUEST['d'] : 0;
-	$is_admin											= !empty($_REQUEST['a']) && $_REQUEST['a'] == "1" ? true : false;
+	// CGI-parameter: h = $host_name
+	$host_name											= empty($_REQUEST['h']) ? "" : $_REQUEST['h'];
+	if(!preg_match("/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/", $host_name, $matches) &&
+	   !preg_match("/^[a-z\d]([a-z\d\-]{0,61}[a-z\d])?(\.[a-z\d]([a-z\d\-]{0,61}‌​[a-z\d])?)*$/i", $host_name, $matches)) {
+			$feedback_to_client['ajx_output']		   .= _negative_feedback("invalid hostname specified");
+			$feedback_to_client['ajx_success']			= (bool)false;
+			$feedback_to_client['ajx_nextstep']			= 0;
+			$feedback_to_client['ajx_progress']			= 0;
+			$feedback_to_client['ajx_ns_add_cgi']		= "";
+	
+			if($DEBUG)
+				$feedback_to_client['ajx_debug']		= _get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'host_name port user_name password feng_office_path current_step current_title server_config_path nginx_config_dir')));
+	
+			die(json_encode($feedback_to_client));
+	}
+	// CGI-parameter: lop = $liquid_office_plugin_path
+	$liquid_office_plugin_path							= !empty($_REQUEST['lop']) ? $_REQUEST['lop'] : "";
+	if ($liquid_office_plugin_path != '/' && ($liquid_office_plugin_path[0] != '/' || $liquid_office_plugin_path[strlen($liquid_office_plugin_path)-1] == '/' || strpos($liquid_office_plugin_path, '//') > -1)) {
+		$feedback_to_client['ajx_output']			   .= _negative_feedback("invalid liquid office plugin path specified");
+		$feedback_to_client['ajx_success']				= (bool)false;
+		$feedback_to_client['ajx_nextstep']				= 0;
+		$feedback_to_client['ajx_progress']				= 0;
+		$feedback_to_client['ajx_ns_add_cgi']			= "";
+	
+		if($DEBUG)
+			$feedback_to_client['ajx_debug']			= _get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'host_name port user_name password feng_office_path current_step current_title server_config_path nginx_config_dir')));
+	
+			die(json_encode($feedback_to_client));
+	}
+	// CGI-parameter: nc = $server_config_path
 	$server_config_path									= empty($_REQUEST['nc']) ? "" : $_REQUEST['nc'];	//TODO: check for security
+	if ($server_config_path != '/' && ($server_config_path[0] != '/' || $server_config_path[strlen($server_config_path)-1] == '/' || strpos($server_config_path, '//') > -1)) {
+		$feedback_to_client['ajx_output']			   .= _negative_feedback("invalid server config path specified");
+		$feedback_to_client['ajx_success']				= (bool)false;
+		$feedback_to_client['ajx_nextstep']				= 0;
+		$feedback_to_client['ajx_progress']				= 0;
+		$feedback_to_client['ajx_ns_add_cgi']			= "";
+	
+		if($DEBUG)
+			$feedback_to_client['ajx_debug']			= _get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'host_name port user_name password feng_office_path current_step current_title server_config_path nginx_config_dir')));
+	
+			die(json_encode($feedback_to_client));
+	}
+	
+	$port												= !empty($_REQUEST['p']) && ctype_digit($_REQUEST['p']) ? $_REQUEST['p'] : 22;
 	$plugins_path										= !empty($_REQUEST['psp']) ? $_REQUEST['psp'] : "";	//TODO: check for security
-	$liquid_office_plugin_path							= !empty($_REQUEST['lop']) ? $_REQUEST['lop'] : "";	//TODO: check for security
-	$zip_file_path										= !empty($_REQUEST['zp']) ? $_REQUEST['zp'] : "";	//TODO: check for security
+	$webserver_run_user									= empty($_REQUEST['r']) ? "" : $_REQUEST['r'];	// cannot check with ctype_alphnum, because then users with "_" for example cannot be used
+	$password											= empty($_REQUEST['s']) ? "" : $_REQUEST['s'];	// s from secret
+	$installation_step									= !empty($_REQUEST['t']) && ctype_digit($_REQUEST['t']) ? $_REQUEST['t'] : 0;	//TODO: abort installation if not a valid number
+	$user_name											= empty($_REQUEST['u']) ? "" : $_REQUEST['u'];	// cannot check with ctype_alphnum, because then users with "_" for example cannot be used
+	// CGI-parameter: zp = $zip_file_path
+	$zip_file_path										= !empty($_REQUEST['zp']) ? $_REQUEST['zp'] : "";
+	if ($server_config_path != '/' && ($server_config_path[0] != '/' || $server_config_path[strlen($server_config_path)-1] == '/' || strpos($server_config_path, '//') > -1)) {
+		$feedback_to_client['ajx_output']			   .= _negative_feedback("invalid zip file path specified");
+		$feedback_to_client['ajx_success']				= (bool)false;
+		$feedback_to_client['ajx_nextstep']				= 0;
+		$feedback_to_client['ajx_progress']				= 0;
+		$feedback_to_client['ajx_ns_add_cgi']			= "";
+	
+		if($DEBUG)
+			$feedback_to_client['ajx_debug']			= _get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'host_name port user_name password feng_office_path current_step current_title server_config_path nginx_config_dir')));
+	
+			die(json_encode($feedback_to_client));
+	}
 	
 	$current_version_number								= _get_current_version_number($host_name, $port, $user_name, $password, $feng_office_path);
 	$path_on_ilia_server_to_current_zip					= "/var/www/dev.ilia.ch/liquid-office/plugin/v{$current_version_number}/liquid_office_plugin_v{$current_version_number}.zip";
@@ -187,16 +256,13 @@
 		exec($check_connection_command, $output, $return_value);
 		$output											= implode($output, " ");
 
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_login");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&d={$display_step}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("no connection");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= (bool)false;
@@ -214,8 +280,7 @@
 	}
 
 	
-	function check_login($host_name, $port, $user_name, $password)
-	{
+	function check_login($host_name, $port, $user_name, $password) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -234,16 +299,13 @@
 		exec($check_login_command, $output, $return_value);
 		$output											= implode($output, " ");
 	
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_user_is_admin");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&d={$display_step}";
-		}
-		else if($return_value == 5)
-		{
+		} else if($return_value == 5) {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("login details are not correct");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= (bool)false;
@@ -254,9 +316,7 @@
 
 			if($DEBUG)
 				$feedback_to_client['ajx_debug']		= _get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'check_login_command return_value output')));
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("could not validate login details");
 			$feedback_to_client['ajx_output']		   .= "(RC = $return_value)<br>(OUT = $output)</p>";
 			$feedback_to_client['ajx_success']			= (bool)false;
@@ -274,8 +334,7 @@
 	}
 	
 
-	function check_whether_user_is_admin($host_name, $port, $user_name, $password)
-	{
+	function check_whether_user_is_admin($host_name, $port, $user_name, $password) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS;
@@ -294,16 +353,13 @@
 		exec($check_for_admin_rights_command, $output, $return_value);
 		$output											= implode($output, " ");
 	
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_path_is_feng_office_dir");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a=1&d={$display_step}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("no administrative rights");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_path_is_feng_office_dir");
@@ -318,8 +374,7 @@
 	}
 	
 
-	function check_whether_path_is_feng_office_dir($host_name, $port, $user_name, $password, $path)
-	{
+	function check_whether_path_is_feng_office_dir($host_name, $port, $user_name, $password, $path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -335,8 +390,7 @@
 		if($return_value == false && $is_admin == true)	// if "first" try failed, try again with admin rights ...
 			$return_value = _check_whether_path_is_feng_office_dir($host_name, $port, $user_name, $password, $path, $is_admin);
 		
-		if($return_value === true)
-		{
+		if($return_value === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 
@@ -347,9 +401,7 @@
 
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("checking complete path");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_one_dir_of_path_is_feng_office_dir");
@@ -364,8 +416,7 @@
 	}
 	
 	
-	function check_whether_one_dir_of_path_is_feng_office_dir($host_name, $port, $user_name, $password, $path)
-	{
+	function check_whether_one_dir_of_path_is_feng_office_dir($host_name, $port, $user_name, $password, $path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -383,18 +434,19 @@
 		else if(_check_for_slashes($path))
 			$dirs_of_path								= explode($path, "\/");
 	
-		foreach($dirs_of_path as $current_dir_of_path)
-		{
+		foreach($dirs_of_path as $current_dir_of_path) {
 			$current_path							   .= "/" . $current_dir_of_path;
 	
-			if(_check_whether_path_is_feng_office_dir($host_name, $port, $user_name, $password, $current_path) === true)
-			{
+			if(_check_whether_path_is_feng_office_dir($host_name, $port, $user_name, $password, $current_path) === true) {
 				$feedback_to_client['ajx_output']	   .= _positive_feedback();
 				$feedback_to_client['ajx_success']		= (bool)false;
-				if($is_admin == true)
+				
+				if($is_admin == true) {
 					$feedback_to_client['ajx_nextstep']	= _get_step_from_function_name("check_whether_nginx_is_running");
-				else
+				} else {
 					$feedback_to_client['ajx_nextstep']	= _get_step_from_function_name("check_whether_plugin_path_exists");
+				}
+				
 				$feedback_to_client['ajx_progress']		= ceil(($current_step / count($installation_procedure)) * 100);
 				$feedback_to_client['ajx_ns_add_cgi']	= "&a={$is_admin}&d={$display_step}&f={$current_path}";
 					
@@ -402,14 +454,11 @@
 			}
 		}
 
-		if($is_admin === true)	//this is only executed if above loop was not successfull; therefore it must be tried, if it is due to lack of permissions
-		{
-			foreach($dirs_of_path as $current_dir_of_path)
-			{
+		if($is_admin === true) {	//this is only executed if above loop was not successfull; therefore it must be tried, if it is due to lack of permissions
+			foreach($dirs_of_path as $current_dir_of_path) {
 				$current_path						   .= "/" . $current_dir_of_path;
 			
-				if(_check_whether_path_is_feng_office_dir($host_name, $port, $user_name, $password, $current_path, $is_admin) === true)
-				{
+				if(_check_whether_path_is_feng_office_dir($host_name, $port, $user_name, $password, $current_path, $is_admin) === true) {
 					$feedback_to_client['ajx_output']  .= _positive_feedback();
 					$feedback_to_client['ajx_success']	= (bool)false;
 					$feedback_to_client['ajx_nextstep']	= _get_step_from_function_name("check_whether_nginx_is_running");
@@ -434,8 +483,7 @@
 	}
 	
 
-	function check_whether_plugin_path_exists($host_name, $port, $user_name, $password, $feng_office_path)
-	{
+	function check_whether_plugin_path_exists($host_name, $port, $user_name, $password, $feng_office_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -450,16 +498,13 @@
 		$liquid_office_plugin_path					   .= "/liquid_office";
 		$return_value									= _check_whether_path_exists($host_name, $port, $user_name, $password, $liquid_office_plugin_path);
 	
-		if($return_value === true)
-		{
+		if($return_value === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_plugin_path_is_writable");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("checking whether /plugins directory exists");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_plugins_path_exists");
@@ -474,8 +519,7 @@
 	}
 
 
-	function check_whether_plugin_path_is_writable($host_name, $port, $user_name, $password, $feng_office_path)
-	{
+	function check_whether_plugin_path_is_writable($host_name, $port, $user_name, $password, $feng_office_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -490,16 +534,13 @@
 		$liquid_office_plugin_path					   .= "/liquid_office";
 		$return_value									= _check_whether_user_may_write_path($host_name, $port, $user_name, $password, $liquid_office_plugin_path);
 			
-		if($return_value === true)
-		{
+		if($return_value === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_nginx_is_running");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("checking whether /plugins directory exists");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_plugins_path_exists");
@@ -514,8 +555,7 @@
 	}
 
 	
-	function check_whether_plugins_path_exists($host_name, $port, $user_name, $password, $feng_office_path)
-	{
+	function check_whether_plugins_path_exists($host_name, $port, $user_name, $password, $feng_office_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -529,16 +569,13 @@
 		$plugins_path									= _get_plugins_path($host_name, $port, $user_name, $password, $feng_office_path);
 		$return_value									= _check_whether_path_exists($host_name, $port, $user_name, $password, $plugins_path);
 	
-		if($return_value === true)
-		{
+		if($return_value === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_plugins_path_is_writable");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("does not exist");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_feng_office_path_is_writable");
@@ -553,8 +590,7 @@
 	}
 
 	
-	function check_whether_plugins_path_is_writable($host_name, $port, $user_name, $password, $feng_office_path)
-	{
+	function check_whether_plugins_path_is_writable($host_name, $port, $user_name, $password, $feng_office_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -567,16 +603,13 @@
 			
 		$plugins_path									= _get_plugins_path($host_name, $port, $user_name, $password, $feng_office_path);
 					
-		if(_check_whether_user_may_write_path($host_name, $port, $user_name, $password, $plugins_path) === true)
-		{
+		if(_check_whether_user_may_write_path($host_name, $port, $user_name, $password, $plugins_path) === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_nginx_is_running");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("cannot be written");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_feng_office_path_is_writable");
@@ -591,8 +624,7 @@
 	}
 	
 	
-	function check_whether_feng_office_path_is_writable($host_name, $port, $user_name, $password, $feng_office_path)
-	{
+	function check_whether_feng_office_path_is_writable($host_name, $port, $user_name, $password, $feng_office_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -603,16 +635,13 @@
 		$display_step									= $display_step + 1;
 		$feedback_to_client['ajx_output']				= "<p>{$display_step}) {$current_title}";
 			
-		if(_check_whether_user_may_write_path($host_name, $port, $user_name, $password, $feng_office_path) === true)
-		{
+		if(_check_whether_user_may_write_path($host_name, $port, $user_name, $password, $feng_office_path) === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_nginx_is_running");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("cannot be written");
 			$feedback_to_client['ajx_output']		   .= "to be on the safe side, please login with a user, having administrator rights, ";
 			$feedback_to_client['ajx_output']		   .= "or take care that your user may write/create the plug-in and in case of running nginx, its config file:<br>";
@@ -632,8 +661,7 @@
 	}
 	
 	
-	function check_whether_nginx_is_running($host_name, $port, $user_name, $password)
-	{
+	function check_whether_nginx_is_running($host_name, $port, $user_name, $password) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -646,8 +674,7 @@
 
 		$server_software								= _determine_web_server($host_name, $port, $user_name, $password);
 	
-		if(stripos($server_software, "nginx") !== false)
-		{
+		if(stripos($server_software, "nginx") !== false) {
 			$server_config_path							= _get_nginx_config_path($host_name, $port, $user_name, $password);
 
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
@@ -655,9 +682,7 @@
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_nginx_config_needs_adapation");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&nc={$server_config_path}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("assure_that_the_necessary_dirs_exist");
@@ -672,8 +697,7 @@
 	}
 	
 	
-	function check_whether_nginx_config_needs_adapation($host_name, $port, $user_name, $password, $server_config_path)
-	{
+	function check_whether_nginx_config_needs_adapation($host_name, $port, $user_name, $password, $server_config_path) {
 		ini_set("display_errors", 1);	//DEBUG
 		ini_set("track_errors", 1);	//DEBUG
 		ini_set("html_errors", 1);	//DEBUG
@@ -697,26 +721,22 @@
 		$tests											= array("try_files"						=> "/^[^#]*try_files.*\/index.php\?\$args/i",
 																"fastcgi_split_path_info"		=> "/^[^#]*fastcgi_split_path_info.*\^\(\.\+\?\\\.php\)\(\/\.\*\)\$/i",
 																"fastcgi_param SCRIPT_FILENAME"	=> "/^[^#]*fastcgi_param\s*SCRIPT_FILENAME.*\$document_root\$fastcgi_script_name/i");
-		foreach(array_keys($tests) as $cur_statement)
-		{
+		foreach(array_keys($tests) as $cur_statement) {
 			if(_test_nginx_statement($host_name, $port, $user_name, $password, $server_config_path, $cur_statement, $tests[$cur_statement]) === false)
 				array_push($statements_to_adapt, $cur_statement);
 		}
 
 		//echo "<p>[" . __FILE__ . ":" . __LINE__ . "] statements_to_adapt = " . print_r($statements_to_adapt, true) . "</p>";	//DEBUG
 		
-		if(count($statements_to_adapt) > 0 && $is_admin == true)
-		{
-			foreach(array_keys($tests) as $cur_statement)
-			{
+		if(count($statements_to_adapt) > 0 && $is_admin == true) {
+			foreach(array_keys($tests) as $cur_statement) {
 				//TODO: review, if it is sufficient to create the "to-do-list for adapt_nginx_config_step()" only in admin mode ...
 				if(_test_nginx_statement($host_name, $port, $user_name, $password, $server_config_path, $cur_statement, $tests[$cur_statement], $is_admin) === false)
 					array_push($statements_to_adapt, $cur_statement);
 			}
 		}
 
-		if(count($statements_to_adapt) > 0)
-		{
+		if(count($statements_to_adapt) > 0) {
 			$temp_filename								= _create_tmp_filename($host_name, $port, $user_name); 
 			$data										= serialize($statements_to_adapt);
 			//TODO: please check, if such a file does not already exist ... 
@@ -730,9 +750,7 @@
 			$feedback_to_client['ajx_ns_msg_cancel']	= (bool)false;
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&nc={$server_config_path}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback("no");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("assure_that_the_necessary_dirs_exist");
@@ -744,8 +762,7 @@
 	}
 	
 	
-	function check_whether_nginx_config_is_writable($host_name, $port, $user_name, $password, $server_config_path)
-	{
+	function check_whether_nginx_config_is_writable($host_name, $port, $user_name, $password, $server_config_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -761,16 +778,13 @@
 		if($return_value == false && $is_admin == true)	// if "first" try failed, try again with admin rights ...
 			$return_value								= _check_whether_user_may_write_path($host_name, $port, $user_name, $password, $server_config_path, $is_admin);
 		
-		if($return_value === true)
-		{
+		if($return_value === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_nginx_config_dir_is_writable");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&nc={$server_config_path}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("cannot be written");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
@@ -788,8 +802,7 @@
 	}
 
 
-	function check_whether_nginx_config_dir_is_writable($host_name, $port, $user_name, $password, $server_config_path)
-	{
+	function check_whether_nginx_config_dir_is_writable($host_name, $port, $user_name, $password, $server_config_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -805,8 +818,7 @@
 		
 		if(preg_match("/.*\//", $server_config_path, $matches))
 			$nginx_config_dir							= $matches[0];
-		else
-		{
+		else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("could not determine \$nginx_config_dir");
 			$feedback_to_client['ajx_output']		   .= "Therefore you need to manually adapt your nginx configuration to work with Liquid Office. You may download a proposal from here.";	//TODO: please generate link to adapted config file
 			$feedback_to_client['ajx_success']			= (bool)false;
@@ -825,16 +837,13 @@
 		if($return_value == false && $is_admin == true)	// if "first" try failed, try again with admin rights ...
 			$return_value								= _check_whether_user_may_write_path($host_name, $port, $user_name, $password, $nginx_config_dir, $is_admin);
 		
-		if($return_value === true)
-		{
+		if($return_value === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_nginx_can_be_restarted");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&nc={$server_config_path}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("cannot be written");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
@@ -851,8 +860,7 @@
 	}
 	
 	
-	function check_whether_nginx_can_be_restarted($host_name, $port, $user_name, $password)
-	{
+	function check_whether_nginx_can_be_restarted($host_name, $port, $user_name, $password) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -865,16 +873,13 @@
 		$display_step									= $display_step + 1;
 		$feedback_to_client['ajx_output']				= "<p>{$display_step}) {$current_title}";
 		
-		if($is_admin === true)
-		{
+		if($is_admin === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("adapt_nginx_config");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&nc={$server_config_path}";
-		}
-		else
-		{
+		} else {
 			
 			$info_on_necessary_changes					= array("try_files"						=> "- try_files-directive looks like this: 'try_files \$uri \$uri/ /index.php?\$args;'",	// http://nginx.org/en/docs/http/ngx_http_core_module.html#try_files
 																"fastcgi_split_path_info"		=> "- fastcgi_split_path_info-statement looks like this: 'fastcgi_split_path_info ^(.+?\.php)(/.*)$;'",	// http://nginx.org/en/docs/http/ngx_http_fastcgi_module.html#fastcgi_split_path_info
@@ -891,8 +896,7 @@
 								
 			$concrete_adaption_info						= "";
 			
-			foreach($statements_to_adapt as $current_statement_to_adapt)
-			{
+			foreach($statements_to_adapt as $current_statement_to_adapt) {
 				$concrete_adaption_info				   .= $info_on_necessary_changes[$current_statement_to_adapt] . "\n";
 			}
 			
@@ -916,8 +920,7 @@
 	}
 	
  
-	function backup_nginx_config($host_name, $port, $user_name, $password, $server_config_path)
-	{
+	function backup_nginx_config($host_name, $port, $user_name, $password, $server_config_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -936,8 +939,7 @@
 		exec($backup_nginx_config_command, $output, $return_value);
 		$output											= implode($output, " ");
 	
-		if($return_value != 0)	// if "first" try failed, try again with admin rights ...
-		{
+		if($return_value != 0) {	// if "first" try failed, try again with admin rights ...
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S cp {$server_config_path} ../sites-available/{$server_config_path}.save.before_liquid_office 2>&1";
 			$backup_nginx_config_command				= "sshpass -p \"$password\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
 			
@@ -947,16 +949,13 @@
 		
 		echo "<p>[" . __FILE__ . ":" . __LINE__ . "] backup_nginx_config_command = $backup_nginx_config_command</p>";	//DEBUG
 				
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("check_whether_nginx_can_be_restarted");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&nc={$server_config_path}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("backup of nginx configuration failed");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= (bool)false;
@@ -973,8 +972,7 @@
 	}
 
 	
-	function adapt_nginx_config($host_name, $port, $user_name, $password, $server_config_path)
-	{
+	function adapt_nginx_config($host_name, $port, $user_name, $password, $server_config_path) {
 		//TODO: HIGH PRIORITY !!!!!!!! PLEASE TEST !!!!!!!!
 		global											$DEBUG;
 		global											$display_step;
@@ -997,34 +995,29 @@
 		if(file_exists($tmp_filename))
 			$statements_to_insert						= unserialize(file_get_contents($tmp_filename));
 
-		foreach($statements_to_insert as $current_statement_to_adapt)
-		{
+		foreach($statements_to_insert as $current_statement_to_adapt) {
 			$command_to_execute_remotely				= $commands_to_adapat_statements[$current_statement_to_adapt];
 			$adapt_statement_command					= "sshpass -p \"$password\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
 	
 			exec($adapt_statement_command, $output, $return_value);
 			$output										= implode($output, " ");
 	
-			if($return_value != 0)
-			{
+			if($return_value != 0) {
 				array_push($statements_to_retry, $current_statement_to_adapt);
 				if($DEBUG)
 					$feedback_to_client['ajx_debug']   .= _get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'adapt_statement_command output return_value')));
 			}
 		}
 		
-		if(count($statements_to_retry) > 0 && $is_admin == true)
-		{
-			foreach($statements_to_insert as $current_statement_to_adapt)
-			{
+		if(count($statements_to_retry) > 0 && $is_admin == true) {
+			foreach($statements_to_insert as $current_statement_to_adapt) {
 				$command_to_execute_remotely				= "echo '{$password}' | sudo -S {$commands_to_adapat_statements[$current_statement_to_adapt]}";
 				$adapt_statement_command					= "sshpass -p \"$password\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
 			
 				exec($adapt_statement_command, $output, $return_value);
 				$output										= implode($output, " ");
 			
-				if($return_value != 0)
-				{
+				if($return_value != 0) {
 					array_push($statements_to_retry, $current_statement_to_adapt);
 					if($DEBUG)
 						$feedback_to_client['ajx_debug']   .= _get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'adapt_statement_command output return_value')));
@@ -1032,8 +1025,7 @@
 			}
 		}
 	
-		if(count($statements_to_retry) > 0)
-		{
+		if(count($statements_to_retry) > 0) {
 			//TODO: save adapted content of nginx configuration file, in tmp_file, so that we can link to it
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("could not adapt nginx configuration");
 			$feedback_to_client['ajx_success']			= (bool)false;
@@ -1045,9 +1037,7 @@
 
 			if($DEBUG)
 				$feedback_to_client['ajx_debug']	   .= _get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'adapt_statement_command output return_value')));
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("assure_that_the_necessary_dirs_exist");
@@ -1059,8 +1049,7 @@
 	}
 
 
-	function assure_that_the_necessary_dirs_exist($host_name, $port, $user_name, $password, $feng_office_path)
-	{
+	function assure_that_the_necessary_dirs_exist($host_name, $port, $user_name, $password, $feng_office_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -1079,8 +1068,7 @@
 		if($return_value == false && $is_admin == true)	// if "first" try failed, try again with admin rights ...
 			$return_value								= _check_whether_path_exists($host_name, $port, $user_name, $password, $plugins_path, $is_admin);
 		
-		if($return_value == false)
-		{
+		if($return_value == false) {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("create_plugins_dir");
@@ -1095,8 +1083,7 @@
 		if($return_value == false && $is_admin == true)	// if "first" try failed, try again with admin rights ...
 			$return_value								= _check_whether_path_exists($host_name, $port, $user_name, $password, $liquid_office_plugin_path, $is_admin);
 		
-		if($return_value == false)
-		{
+		if($return_value == false) {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("create_liquid_office_plugin_dir");
@@ -1116,8 +1103,7 @@
 	}
 
 	
-	function create_plugins_dir($host_name, $port, $user_name, $password, $plugins_path)
-	{
+	function create_plugins_dir($host_name, $port, $user_name, $password, $plugins_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -1134,16 +1120,13 @@
 		if($return_value == false && $is_admin == true)	// if "first" try failed, try again with admin rights ...
 			$return_value = _create_dir($host_name, $port, $user_name, $password, $plugins_path, $is_admin);
 		
-		if($return_value === true)
-		{
+		if($return_value === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("assure_that_the_necessary_dirs_exist");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&psp={$plugins_path}&lop={$liquid_office_plugin_path}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback();
 			$feedback_to_client['ajx_output']		   .= "cannot create plugins directory (RC = $return_value)";
 			$feedback_to_client['ajx_success']			= (bool)false;
@@ -1157,8 +1140,7 @@
 	}
 
 
-	function create_liquid_office_plugin_dir($host_name, $port, $user_name, $password, $liquid_office_plugin_path)
-	{
+	function create_liquid_office_plugin_dir($host_name, $port, $user_name, $password, $liquid_office_plugin_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -1175,17 +1157,13 @@
 		if($return_value === false && $is_admin == true)	// if "first" try failed, try again with admin rights ...
 			$return_value = _create_dir($host_name, $port, $user_name, $password, $liquid_office_plugin_path, $is_admin);
 			
-		if($return_value === true)
-		{
+		if($return_value === true) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("assure_that_the_necessary_dirs_exist");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&psp={$plugins_path}&lop={$liquid_office_plugin_path}";
-		}
-		else 
-		{
-				
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback();
 			$feedback_to_client['ajx_output']		   .= "please check connection (host, port, login, ...) and especiialy permissions! Easy installation requires a SSH demon running on specified host.</p>";
 			$feedback_to_client['ajx_success']			= (bool)false;
@@ -1200,8 +1178,7 @@
 	}
 	
 	
-	function check_whether_liquid_office_is_already_installed($host_name, $port, $user_name, $password, $plugins_path)
-	{
+	function check_whether_liquid_office_is_already_installed($host_name, $port, $user_name, $password, $plugins_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -1224,8 +1201,7 @@
 		exec($check_whether_liquid_office_is_already_installed_command, $output, $return_value);
 		$output											= implode($output, " ");
 
-		if(strpos($output, $part_of_message_indicating_success) === false && $is_admin == true)
-		{
+		if(strpos($output, $part_of_message_indicating_success) === false && $is_admin == true) {
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S grep \"class.*system_model\" $path_to_liquid_office_revealing_file 2>&1";
 			$check_whether_liquid_office_is_already_installed_command
 														= "sshpass -p \"$password\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
@@ -1235,16 +1211,13 @@
 			$output										= implode($output, " ");
 		}
 		
-		if(strpos($output, $part_of_message_indicating_success) !== false)
-		{
+		if(strpos($output, $part_of_message_indicating_success) !== false) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("upload_zip");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&psp={$plugins_path}&lop={$liquid_office_plugin_path}";
-		}
-		else
-		{	//TODO: please include dialogue with user, whether to overwrite the existing plug-in or not - now it is overwritten
+		} else {	//TODO: please include dialogue with user, whether to overwrite the existing plug-in or not - now it is overwritten
 			$feedback_to_client['ajx_output']		   .= _positive_feedback("user input required");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("upload_zip");
@@ -1259,8 +1232,7 @@
 	}
 
 
-	function upload_zip($host_name, $port, $user_name, $password, $plugins_path)
-	{
+	function upload_zip($host_name, $port, $user_name, $password, $plugins_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -1285,8 +1257,7 @@
 
 		exec($clean_plugin_dir_command, $output, $return_value);
 		
-		if($return_value != 0 && $is_admin == true)
-		{
+		if($return_value != 0 && $is_admin == true) {
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S rm -rf {$liquid_office_plugin_path} 2>&1";
 			$clean_plugin_dir_command					= "sshpass -p \"$password\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
 		
@@ -1297,8 +1268,7 @@
 		$cleanup_output_for_debugging					= $output;
 		$cleanup_return_value_for_debugging				= $return_value;
 		
-		if($return_value != 0)
-		{
+		if($return_value != 0) {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("cannot clean plug-in directory: '$liquid_office_plugin_path' !");
 			$feedback_to_client['ajx_output']		   .= "please check connection (host, port, login, permissions, ...) ouput = $output; return_value = $return_value</p>";
 			$feedback_to_client['ajx_success']			= (bool)false;
@@ -1323,8 +1293,7 @@
 		exec($upload_command, $output, $return_value);
 		$output											= implode($output, " ");
 		
-		if($return_value != 0 && $is_admin == true)
-		{
+		if($return_value != 0 && $is_admin == true) {
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S mkdir -p {$liquid_office_plugin_path} && echo '{$password}' | sudo -S wget -T{$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -t{$NUMBER_OF_TRIES} -O{$path_to_zip_file_on_client_server} {$ilia_url_to_current_zip}  2>&1";
 			$upload_command								= "sshpass -p \"$password\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
 				
@@ -1332,16 +1301,13 @@
 			$output										= implode($output, " ");
 		}
 		
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("unpack_zip");
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&psp={$plugins_path}&lop={$liquid_office_plugin_path}&zp={$path_to_zip_file_on_client_server}";
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("cannot upload zip to specified server!");
 			$feedback_to_client['ajx_output']		   .= "please check connection (host, port, login, permissions, ...) ouput = $output; return_value = $return_value</p>";
 			$feedback_to_client['ajx_success']			= (bool)false;
@@ -1361,8 +1327,7 @@
 	}
 	
 	
-	function unpack_zip($host_name, $port, $user_name, $password, $zip_file_path)
-	{
+	function unpack_zip($host_name, $port, $user_name, $password, $zip_file_path) {
 		global											$path_on_ilia_server_to_current_zip;
 		global											$DEBUG;
 		global											$display_step;
@@ -1386,8 +1351,7 @@
 		exec($unpack_command, $output, $return_value);
 		$output											= implode($output, " ");
 
-		if($return_value != 0 && $is_admin === true)
-		{
+		if($return_value != 0 && $is_admin === true) {
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S unzip -o {$zip_file_path} -d {$liquid_office_plugin_path} 2>&1";
 			$unpack_command								= "sshpass -p \"$password\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
 
@@ -1395,16 +1359,13 @@
 			$output										= implode($output, " ");
 		}
 
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("set_permissions");
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&psp={$plugins_path}&lop={$liquid_office_plugin_path}&zp={$zip_file_path}";
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("cannot unpack zipped installation file");
 			$feedback_to_client['ajx_output']		   .= "please check host AND port! easy installation requires a SSH demon running on specified host</p>";
 			$feedback_to_client['ajx_success']			= (bool)false;
@@ -1423,8 +1384,7 @@
 	}
 
 
-	function set_permissions($host_name, $port, $user_name, $password, $liquid_office_plugin_path)
-	{
+	function set_permissions($host_name, $port, $user_name, $password, $liquid_office_plugin_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -1445,8 +1405,7 @@
 		exec($set_permissions_command, $output, $return_value);
 		$output											= implode($output, " ");
 
-		if($return_value != 0 && $is_admin === true)
-		{
+		if($return_value != 0 && $is_admin === true) {
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S chmod 0775 -R {$liquid_office_plugin_path} 2>&1";
 			$set_permissions_command					= "sshpass -p \"$password\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
 
@@ -1454,16 +1413,13 @@
 			$output										= implode($output, " ");
 		}
 
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("get_run_user_of_webserver");
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&psp={$plugins_path}&lop={$liquid_office_plugin_path}&zp={$zip_file_path}";
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("not possible");
 			$feedback_to_client['ajx_output']		   .= "<p>cannot set permissions of $liquid_office_plugin_path! ";
 			$feedback_to_client['ajx_output']		   .= "please check host AND port! easy installation requires a SSH demon running on specified host</p>";
@@ -1483,8 +1439,7 @@
 	}
 
 
-	function get_run_user_of_webserver($host_name, $port, $user_name, $password)
-	{
+	function get_run_user_of_webserver($host_name, $port, $user_name, $password) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -1501,18 +1456,13 @@
 		$feedback_to_client['ajx_output']				= "<p>{$display_step}) {$current_title}";
 		
 		$webserver_software								= _determine_web_server($host_name, $port, $user_name, $password);
-		if(stripos($webserver_software, "Apache") !== false)
-		{
+		if(stripos($webserver_software, "Apache") !== false) {
 			$command_to_execute_remotely				= "grep -R '\\sAPACHE_RUN_USER' /etc/apache* 2>&1";
 			$pattern_to_detect_run_user					= '/[^#]*APACHE_RUN_USER\s*=\s*([^;\n]*)\s*\n*/';
-		}
-		else if(stripos($webserver_software, "nginx") !== false)
-		{
+		} else if(stripos($webserver_software, "nginx") !== false) {
 			$command_to_execute_remotely				= "grep -R 'user\\s' /etc/nginx/* 2>&1";
 			$pattern_to_detect_run_user					= '/:[^#]*user\s+([^;]*)\s*;\s*\n*/';
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_msg']				= "Cannot determine run user for web-server!\n";
 				
 			if($DEBUG)
@@ -1525,8 +1475,7 @@
 		exec($get_run_user_command, $output, $return_value);
 		$output											= implode($output, "\n");
 
-		if($return_value != 0 && $is_admin == true)
-		{
+		if($return_value != 0 && $is_admin == true) {
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S {$command_to_execute_remotely}";
 			$upload_command								= "sshpass -p \"$password\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
 		
@@ -1534,8 +1483,7 @@
 			$output										= implode($output, " ");
 		}
 		
-		if($return_value != 0)
-		{
+		if($return_value != 0) {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("not possible");
 			$feedback_to_client['ajx_output']		   .= "<p>cannot determine run user for web-server ";
 			$feedback_to_client['ajx_output']		   .= "please check host AND port! easy installation requires a SSH demon running on specified host</p>";
@@ -1558,16 +1506,13 @@
 
 		$webserver_run_user								= $matches[1];
 
-		if(!empty($webserver_run_user))
-		{
+		if(!empty($webserver_run_user)) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("set_owner");
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&psp={$plugins_path}&lop={$liquid_office_plugin_path}&zp={$zip_file_path}&r={$webserver_run_user}";
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("not possible");
 			$feedback_to_client['ajx_output']		   .= "<p>cannot determine run user for web-server ";
 			$feedback_to_client['ajx_output']		   .= "please check host AND port! easy installation requires a SSH demon running on specified host</p>";
@@ -1585,8 +1530,7 @@
 	}
 
 	
-	function set_owner($host_name, $port, $user_name, $password, $liquid_office_plugin_path)
-	{
+	function set_owner($host_name, $port, $user_name, $password, $liquid_office_plugin_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -1608,8 +1552,7 @@
 		exec($get_run_user_group_command, $output, $return_value);
 		$output											= implode($output, " ");
 		
-		if($return_value != 0)
-		{
+		if($return_value != 0) {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("not possible");
 			$feedback_to_client['ajx_output']		   .= "<p>cannot determine run user GROUP for web-server ";
 			$feedback_to_client['ajx_output']		   .= "please check host AND port! easy installation requires a SSH demon running on specified host</p>";
@@ -1633,8 +1576,7 @@
 		
 		$webserver_run_user_group						= $matches[1];
 		
-		if(empty($webserver_run_user_group))
-		{
+		if(empty($webserver_run_user_group)) {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("not possible");
 			$feedback_to_client['ajx_output']		   .= "<p>cannot determine run user GROUP for web-server ";
 			$feedback_to_client['ajx_output']		   .= "please check host AND port! easy installation requires a SSH demon running on specified host</p>";
@@ -1656,8 +1598,7 @@
 		exec($set_owner_command, $output, $return_value);
 		$output											= implode($output, " ");
 	
-		if($return_value != 0 && $is_admin === true)
-		{
+		if($return_value != 0 && $is_admin === true) {
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S chown -R {$webserver_run_user}:{$webserver_run_user_group} {$liquid_office_plugin_path} 2>&1";
 			$set_owner_command							= "sshpass -p \"$password\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"$command_to_execute_remotely\"";
 	
@@ -1665,16 +1606,13 @@
 			$output										= implode($output, " ");
 		}
 	
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("execute_install_sql");
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&psp={$plugins_path}&lop={$liquid_office_plugin_path}&zp={$zip_file_path}";
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("not possible");
 			$feedback_to_client['ajx_output']		   .= "<p>cannot set owner of $liquid_office_plugin_path! ";
 			$feedback_to_client['ajx_output']		   .= "please check host AND port! easy installation requires a SSH demon running on specified host</p>";
@@ -1695,8 +1633,7 @@
 	}
 	
 	
-	function execute_install_sql($host_name, $port, $user_name, $password, $liquid_office_plugin_path)
-	{
+	function execute_install_sql($host_name, $port, $user_name, $password, $liquid_office_plugin_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -1714,8 +1651,7 @@
 	
 		$feng_office_config								= _get_feng_office_config($host_name, $port, $user_name, $password, $feng_office_path);
 		
-		if($feng_office_config === false)
-		{
+		if($feng_office_config === false) {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("cannot read feng-offic config and therefore execute install sql! ONE OF THE POSSIBLE CAUSES might be, that the config has been deleted or Feng Office has not yet been installed completely ...");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= (bool)false;
@@ -1732,13 +1668,12 @@
 		
 		//print_r($feng_office_config);	//DEBUG
 		
-		if($feng_office_config["DB_ADAPTER"] != "mysql")	// other adapter than mysql requires update of easy installation
-		{
+		if($feng_office_config["DB_ADAPTER"] != "mysql") {	// other adapter than mysql requires update of easy installation
 			$message									= "file     = " . __FILE__ . "\n";
 			$message								   .= "line     = " . __LINE__ . "\n";
 			$message								   .= print_r($feng_office_config, true);
 	
-			mail("office@liquid-office.eu", "IMPORTANT: Other db-adapter than mysql used for easy installation", $message);
+			mail("dev@liquid-office.eu", "IMPORTANT: Other db-adapter than mysql used for easy installation", $message);
 		}
 	
 		//TODO: check, whether mysql is up with 'mysql -V' - this most probably requires own function
@@ -1753,8 +1688,7 @@
 
 		//echo $sql_command;	//DEBUG
 		
-		if(strpos($sql_command, "<?php") !== false)	// still php code within SQL?
-		{
+		if(strpos($sql_command, "<?php") !== false) {	// still php code within SQL?
 			$message									= "file     = " . __FILE__ . "\n";
 			$message								   .= "line     = " . __LINE__ . "\n";
 			$message								   .= "sql_command = $sql_command\n";
@@ -1774,8 +1708,7 @@
 		$output											= implode($output, " ");
 	
 		//old: if(strpos($output, $part_of_message_indicating_fail) !== false)
-		if($return_value != 0)
-		{
+		if($return_value != 0) {
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S mysql -h '{$feng_office_config['DB_HOST']}' -u '{$feng_office_config['DB_USER']}' -p{$feng_office_config['DB_PASS']} -e \\\"{$sql_command}\\\" {$feng_office_config['DB_NAME']} 2>&1";
 			$execute_install_sql_command				= "sshpass -p \"{$password}\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no {$user_name}@{$host_name} -p {$port} -t -t \"{$command_to_execute_remotely}\"";
 			$part_of_message_indicating_fail			= "ERROR";
@@ -1787,16 +1720,13 @@
 		}
 
 		//old: if(strpos($output, $part_of_message_indicating_fail) === false)
-		if($return_value ==  0)
-		{
+		if($return_value ==  0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("execute_update_sql");
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&psp={$plugins_path}&lop={$liquid_office_plugin_path}&zp={$zip_file_path}";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("cannot execute install sql!");
 			$feedback_to_client['ajx_output']		   .= "RC: {$return_value}</p>";
 			$feedback_to_client['ajx_success']			= (bool)false;
@@ -1814,8 +1744,7 @@
 	}
 	
 	
-	function execute_update_sql($host_name, $port, $user_name, $password, $liquid_office_plugin_path)
-	{
+	function execute_update_sql($host_name, $port, $user_name, $password, $liquid_office_plugin_path) {
 		//TODO: this is a dummy function, please fill with meaningful code
 		//TODO: add the following steps
 		// perform the update SQL operations, as laid down in [FengOfficeDir]/plugins/liquid_office/update.php, ie take the SQL statements from all the functions in [FengOfficeDir]/plugins/liquid_office/update.php, until the second number of the function name == [number of version to install]
@@ -1844,8 +1773,7 @@
 	}
 
 
-	function activate_plugin($host_name, $port, $user_name, $password, $feng_office_path)
-	{
+	function activate_plugin($host_name, $port, $user_name, $password, $feng_office_path) {
 		global											$DEBUG;
 		global											$display_step;
 		global											$installation_procedure;
@@ -1866,8 +1794,7 @@
 		$current_version_number							= _get_current_version_number();
 		$feng_office_config								= _get_feng_office_config($host_name, $port, $user_name, $password, $feng_office_path);
 	
-		if($feng_office_config["DB_ADAPTER"] != "mysql")	// other adapter than mysql requires update of easy installation
-		{
+		if($feng_office_config["DB_ADAPTER"] != "mysql") {	// other adapter than mysql requires update of easy installation
 			$message							= <<<END_OF_MESSAGE
 file     = {__FILE__};
 line     = {__LINE__};
@@ -1894,8 +1821,7 @@ END_OF_MESSAGE;
 		$output											= implode($output, " ");
 	
 		//old: if(strpos($output, $part_of_message_indicating_fail) !== false && $is_admin === true)	//TODO: check whether, these comparisons muss be "!="?????????
-		if($return_value != 0 && $is_admin === true)	//TODO: check whether, these comparisons muss be "!="?????????
-		{
+		if($return_value != 0 && $is_admin === true) {	//TODO: check whether, these comparisons muss be "!="?????????
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S mysql -h '{$feng_office_config['DB_HOST']}' -u '{$feng_office_config['DB_USER']}' -p{$feng_office_config['DB_PASS']} -e \\\"{$sql_command}\\\" {$feng_office_config['DB_NAME']} 2>&1";
 			$activate_plugin_command					= "sshpass -p \"{$password}\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no {$user_name}@{$host_name} -p {$port} -t -t \"{$command_to_execute_remotely}\"";
 			$part_of_message_indicating_fail			= "ERROR";
@@ -1905,16 +1831,13 @@ END_OF_MESSAGE;
 		}
 		
 		//old: if(strpos($output, $part_of_message_indicating_fail) === false)
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= _get_step_from_function_name("delete_zip");
 			$feedback_to_client['ajx_ns_add_cgi']		= "&a={$is_admin}&d={$display_step}&psp={$plugins_path}&lop={$liquid_office_plugin_path}&zp={$zip_file_path}";
 			$feedback_to_client['ajx_progress']			= ceil(($current_step / count($installation_procedure)) * 100);
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("cannot activate plugin!");
 			$feedback_to_client['ajx_output']		   .= "please check whether and connections issues! easy installation requires a SSH demon ";
 			$feedback_to_client['ajx_output']		   .= "running on specified host</p>";
@@ -1931,8 +1854,7 @@ END_OF_MESSAGE;
 	}
 
 
-	function delete_zip($host_name, $port, $user_name, $password, $zip_file_path)
-	{
+	function delete_zip($host_name, $port, $user_name, $password, $zip_file_path) {
 		ini_set("display_errors", 1);	//DEBUG
 		ini_set("track_errors", 1);	//DEBUG
 		ini_set("html_errors", 1);	//DEBUG
@@ -1958,8 +1880,7 @@ END_OF_MESSAGE;
 		$output											= implode($output, " ");
 		// return _get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'delete_command output return_value host_name port user_name password zip_file_path')));	//DEBUG
 			
-		if($return_value != 0 && $is_admin === true)
-		{
+		if($return_value != 0 && $is_admin === true) {
 			$command_to_execute_remotely				= "echo '{$password}' | sudo -S rm -f {$zip_file_path} 2>&1";
 			$delete_command								= "sshpass -p \"{$password}\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"{$command_to_execute_remotely}\"";
 			
@@ -1968,16 +1889,13 @@ END_OF_MESSAGE;
 		}
 		
 		
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feedback_to_client['ajx_output']		   .= _positive_feedback();
 			$feedback_to_client['ajx_output']		   .= "INSTALLATION COMPLETED SUCCESSFULLY!</p>";
 			$feedback_to_client['ajx_success']			= (bool)true;
 			$feedback_to_client['ajx_progress']			= 100;
 			$feedback_to_client['ajx_msg']				= "CONGRATULATIONS ! installation completed successfully!";
-		}
-		else
-		{
+		} else {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("failed");
 			$feedback_to_client['ajx_output']		   .= "cannot remove {$zip_file_path}; please check access rights and connections issues! easy installation requires a SSH demon ";
 			$feedback_to_client['ajx_output']		   .= "running on specified host</p>";
@@ -2002,20 +1920,17 @@ END_OF_MESSAGE;
 	
 	
 	
-	function _positive_feedback($msg = "OK")
-	{
+	function _positive_feedback($msg = "OK") {
 		return "<strong>$msg</strong><br>";
 	}
 
 	
-	function _negative_feedback($msg = "failed")
-	{
+	function _negative_feedback($msg = "failed") {
 		return "<strong>$msg</strong><br>";
 	}
 	
 	
-	function _check_whether_path_is_feng_office_dir($host_name, $port, $user_name, $password, $path, $is_admin = false)
-	{
+	function _check_whether_path_is_feng_office_dir($host_name, $port, $user_name, $password, $path, $is_admin = false) {
 		global											$DEBUG;
 		global											$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS;
 		$output											= array();
@@ -2041,8 +1956,7 @@ END_OF_MESSAGE;
 	}
 
 
-	function _get_feng_office_config($host_name, $port, $user_name, $password, $feng_office_path)
-	{
+	function _get_feng_office_config($host_name, $port, $user_name, $password, $feng_office_path) {
 		global											$DEBUG;
 		global											$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS;
 		$output											= array();
@@ -2061,13 +1975,11 @@ END_OF_MESSAGE;
 		//echo "output = $output<br>";	//DEBUG
 		//echo "return_value = $return_value<br>";	//DEBUG
 		
-		if($return_value == 0)
-		{
+		if($return_value == 0) {
 			$feng_office_config							= array(); 
 			$pattern									= '/define.*?[\"\'](.*?)[\"\'].*?,.*?[\"\'](.*?)[\"\']/i';
 			
-			foreach($output as $line_of_config_file)
-			{
+			foreach($output as $line_of_config_file) {
 				$subject								= $line_of_config_file;
 				$matches								= array();
 	
@@ -2086,8 +1998,7 @@ END_OF_MESSAGE;
 	}
 
 
-	function _check_for_slashes($string_to_test)
-	{
+	function _check_for_slashes($string_to_test) {
 		if(strpos($string_to_test, "\/") === false)
 			return false;
 		else
@@ -2095,8 +2006,7 @@ END_OF_MESSAGE;
 	}
 	
 	
-	function _check_for_backslashes($string_to_test)
-	{
+	function _check_for_backslashes($string_to_test) {
 		if(strpos($string_to_test, "\\") === false)
 			return false;
 		else
@@ -2104,8 +2014,7 @@ END_OF_MESSAGE;
 	}
 	
 	
-	function _assure_that_path_contains_slashes($path)
-	{
+	function _assure_that_path_contains_slashes($path) {
 		if(_check_for_backslashes($path))
 			return strtr($path, "\\", "\/");
 		else
@@ -2113,8 +2022,7 @@ END_OF_MESSAGE;
 	}
 
 
-	function _remove_last_char_if_it_is_slash($path)
-	{
+	function _remove_last_char_if_it_is_slash($path) {
 		//echo "path = $path<br>";	// DEBUG
 		//echo "last char = " . substr($path, -1) . "<br>";	//DEBUG
 		//echo "reduced string = " . substr($path, 0, -1) . "<br>";	//DEBUG
@@ -2126,8 +2034,7 @@ END_OF_MESSAGE;
 	}
 
 	
-	function _check_whether_path_exists($host_name, $port, $user_name, $password, $path, $is_admin = false)
-	{
+	function _check_whether_path_exists($host_name, $port, $user_name, $password, $path, $is_admin = false) {
 		global											$DEBUG;
 		global											$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS;
 		$feedback_to_client								= array();
@@ -2157,8 +2064,7 @@ END_OF_MESSAGE;
 	}
 
 
-	function _check_whether_user_may_write_path($host_name, $port, $user_name, $password, $path, $is_admin = false)
-	{
+	function _check_whether_user_may_write_path($host_name, $port, $user_name, $password, $path, $is_admin = false) {
 		global											$DEBUG;
 		global											$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS;
 		$feedback_to_client								= array();
@@ -2188,8 +2094,7 @@ END_OF_MESSAGE;
 	}
 
 	
-	function _create_dir($host_name, $port, $user_name, $password,  $path, $is_admin = false)
-	{
+	function _create_dir($host_name, $port, $user_name, $password,  $path, $is_admin = false) {
 		global											$DEBUG;
 		global											$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS;
 		$feedback_to_client								= array();
@@ -2211,8 +2116,7 @@ END_OF_MESSAGE;
 	}
 
 	
-	function _get_current_version_number($return_number_instead_of_ajax = true)
-	{
+	function _get_current_version_number($return_number_instead_of_ajax = true) {
 		global											$URL_TO_CURRENT_VERSION_NUMBER_FILE;
 		$feedback_to_client								= array();
 		
@@ -2224,8 +2128,7 @@ END_OF_MESSAGE;
 	}
 	
 
-	function _get_debug_info($file, $function, $line, $vars_to_dump)
-	{
+	function _get_debug_info($file, $function, $line, $vars_to_dump) {
 		// be sure to set "extensions.firebug.stringCropLength=0" in about:config for FireBug
 		//TODO: set programatically, cf http://stackoverflow.com/questions/3796084/about-config-preferences-and-js
 		/*
@@ -2246,8 +2149,7 @@ END_OF_MESSAGE;
 	}
 
 	
-	function _get_step_from_function_name($function_name)
-	{
+	function _get_step_from_function_name($function_name) {
 		global			$installation_procedure;
 	
 		for($i = 0; $i < count($installation_procedure); $i++)
@@ -2258,8 +2160,7 @@ END_OF_MESSAGE;
 	}
 	
 	
-	function _get_plugins_path($host_name, $port, $user_name, $password, $feng_office_path)
-	{
+	function _get_plugins_path($host_name, $port, $user_name, $password, $feng_office_path) {
 		global											$DEBUG;
 		global											$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS;
 
@@ -2277,17 +2178,16 @@ END_OF_MESSAGE;
 		if($DEBUG)
 			_get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'host_name port user_name password feng_office_path get_plugins_path_command return_value output')));
 	
-		if(strpos($output, $part_of_message_indicating_success) !== false)
-		{
+		if(strpos($output, $part_of_message_indicating_success) !== false) {
 			$pattern									= '/define.*?,.*?[\"\'](.*?)[\"\']/i';
 			$subject									= $output;
 			$matches									= array();
 			preg_match($pattern, $subject, $matches);
 	
 			$plugins_path								= $feng_office_path . $matches[1];
-		}
-		else
+		} else {
 			$plugins_path								= $feng_office_path . "/plugins";
+		}
 	
 		$plugins_path									= _assure_that_path_contains_slashes($plugins_path);
 		$plugins_path									= _remove_last_char_if_it_is_slash($plugins_path);
@@ -2296,8 +2196,7 @@ END_OF_MESSAGE;
 	}
 
 
-	function _determine_web_server($host_name, $port, $user_name, $password)
-	{
+	function _determine_web_server($host_name, $port, $user_name, $password) {
 		global											$DEBUG;
 		global											$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS;
 		$output											= array();
@@ -2320,8 +2219,7 @@ END_OF_MESSAGE;
 	}
 	
 	
-	function _get_nginx_config_path($host_name, $port, $user_name, $password)
-	{
+	function _get_nginx_config_path($host_name, $port, $user_name, $password) {
 		global											$DEBUG;
 		global											$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS;
 		$output											= array();
@@ -2338,10 +2236,8 @@ END_OF_MESSAGE;
 	
 		exec($get_server_config_path_command, $output, $return_value);
 	
-		if($return_value != 0)
-		{
-			if($return_value == 1)	// no nginx config file found with specified server name; maybe this is due to a default config ...
-			{
+		if($return_value != 0) {
+			if($return_value == 1) {	// no nginx config file found with specified server name; maybe this is due to a default config ...
 				$command_to_execute_remotely			= "grep -HP 'listen.*?default_server' /etc/nginx/nginx.conf; grep -RHP 'listen.*?default_server' /etc/nginx/sites-enabled/* 2>&1";	//TODO: check whether /etc/nginx is also true for Mac OS X??
 				$get_server_config_path_command			= "sshpass -p \"{$password}\" ssh -o ConnectTimeout={$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS} -o StrictHostKeyChecking=no $user_name@$host_name -p $port -t -t \"{$command_to_execute_remotely}; exit;\"";
 				
@@ -2366,20 +2262,18 @@ END_OF_MESSAGE;
 		if($DEBUG)
 			_get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact($output[0]));
 	
-		if(preg_match($pattern, $subject, $matches))
-		{
+		if(preg_match($pattern, $subject, $matches)) {
 			if($DEBUG)
 				_get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact($matches[1]));
 
 			return $matches[1];
-		}
-		else
+		} else {
 			return (bool)false;
+		}
 	}
 	
 	
-	function _test_nginx_statement($host_name, $port, $user_name, $password, $server_config_path, $statement_to_look_for, $test_for_statement, $is_admin = false)
-	{
+	function _test_nginx_statement($host_name, $port, $user_name, $password, $server_config_path, $statement_to_look_for, $test_for_statement, $is_admin = false) {
 		global											$DEBUG;
 		global											$TIMEOUT_FOR_SSH_CONNECTIONS_IN_SECONDS;
 
@@ -2402,20 +2296,17 @@ END_OF_MESSAGE;
 
 		exec($get_statements_from_server_config_command, $output, $return_value);
 		
-		if($return_value != 0)
+		if($return_value != 0) {
 			return (bool)false;
-		else
-		{
+		} else {
 			$pattern									= $test_for_statement;
 			$good_statements							= array();
 		
-			foreach($output as $line_of_server_config_holding_statement)
-			{
+			foreach($output as $line_of_server_config_holding_statement) {
 				$subject								= $line_of_server_config_holding_statement;
 				$matches								= array();
 		
-				if(preg_match($pattern, $subject, $matches))
-				{
+				if(preg_match($pattern, $subject, $matches)) {
 					if($DEBUG)
 						_get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact($matches[0]));
 
@@ -2431,8 +2322,7 @@ END_OF_MESSAGE;
 	}
 
 	
-	function _get_liquid_office_plugin_path_from_zip_file_path($zip_file_path)
-	{
+	function _get_liquid_office_plugin_path_from_zip_file_path($zip_file_path) {
 		global											$DEBUG;
 		$pattern										= "/.*\//i";
 		$subject										= $zip_file_path;
@@ -2447,8 +2337,7 @@ END_OF_MESSAGE;
 	}
 	
 	
-	function _get_install_sql($host_name, $port, $user_name, $password, $feng_office_path)
-	{
+	function _get_install_sql($host_name, $port, $user_name, $password, $feng_office_path) {
 		global											$DEBUG;
 		global											$INLINE_COMMENT;
 		global											$MULTILINE_COMMENT_START;
@@ -2470,12 +2359,10 @@ END_OF_MESSAGE;
 		if($DEBUG)
 			_get_debug_info(__FILE__, __FUNCTION__, __LINE__, compact(explode(' ', 'get_install_sql_command return_value output')));
 			
-		if($return_value != 0)
+		if($return_value != 0) {
 			return (bool)false;
-		else
-		{
-			foreach($output as $line_of_install_sql_files)
-			{
+		} else {
+			foreach($output as $line_of_install_sql_files) {
 				$line_is_comment						= _check_whether_line_is_comment($line_of_install_sql_files);
 				$line_is_blank							= _check_whether_line_is_blank($line_of_install_sql_files);
 	
@@ -2486,23 +2373,19 @@ END_OF_MESSAGE;
 	
 				if(	$line_is_comment !== false ||
 					$line_is_blank === true ||
-					$comment_is_multi_line_comment === true)
-				{
+					$comment_is_multi_line_comment === true) {
 					$rest_of_line						= "";
 					
-					if($line_is_comment === $MULTILINE_COMMENT_START)
+					if($line_is_comment === $MULTILINE_COMMENT_START) {
 						$comment_is_multi_line_comment	= true;
-					else if($line_is_comment === $MULTILINE_COMMENT_END)
-					{
+					} else if($line_is_comment === $MULTILINE_COMMENT_END) {
 						$comment_is_multi_line_comment	= false;
 						$rest_of_line					= substr(strpos($line_of_install_sql_files, "*/"));
 						$is_rest_of_line_blank			= _check_whether_line_is_blank($rest_of_line);
 		
 						if(!$is_rest_of_line_blank)
 						array_push($install_sql, $rest_of_line);
-					}
-					else if($line_is_comment === $INLINE_COMMENT)
-					{
+					} else if($line_is_comment === $INLINE_COMMENT) {
 						$rest_of_line					= substr(0, strpos($line_of_install_sql_files, "/*"));
 						$rest_of_line				   .= substr(strpos($line_of_install_sql_files, "*/"));
 						$is_rest_of_line_blank			= _check_whether_line_is_blank($rest_of_line);
@@ -2512,9 +2395,7 @@ END_OF_MESSAGE;
 					}
 					
 				//echo "<p>" . __LINE__ . ": rest_of_line = '" . $rest_of_line . "'</p>";	//DEBUG
-				}
-				else
-				{
+				} else {
 					array_push($install_sql, $line_of_install_sql_files);
 					//echo "<p>" . __LINE__ . ": line_of_install_sql_files = '" . $line_of_install_sql_files . "'</p>";	//DEBUG
 				}
@@ -2528,8 +2409,7 @@ END_OF_MESSAGE;
 	}
 	
 	
-	function _check_whether_line_is_comment($line)
-	{
+	function _check_whether_line_is_comment($line) {
 		global											$INLINE_COMMENT;
 		global											$MULTILINE_COMMENT_START;
 		global											$MULTILINE_COMMENT_END;
@@ -2545,8 +2425,7 @@ END_OF_MESSAGE;
 			return true;
 	
 		$needle											=	"/*";
-		if(strpos($haystack, $needle) !== false)
-		{
+		if(strpos($haystack, $needle) !== false) {
 			$needle										=	"*/";
 			if(strpos($haystack, $needle) === false)
 				return $MULTILINE_COMMENT_START;
@@ -2562,14 +2441,12 @@ END_OF_MESSAGE;
 	}
 	
 	
-	function _check_whether_line_is_blank($line)
-	{
+	function _check_whether_line_is_blank($line) {
 		return ctype_space($line);
 	}
 	
 	
-	function _create_tmp_filename($host_name, $port, $user_name)
-	{
+	function _create_tmp_filename($host_name, $port, $user_name) {
 		return "easy_installation_tmp" . sha1("{$host_name}{$port}{$user_name}");
 	}
 	
