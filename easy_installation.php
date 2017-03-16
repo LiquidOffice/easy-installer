@@ -59,7 +59,7 @@
 	// CGI-parameter: h = $host_name
 	$host_name											= empty($_REQUEST['h']) ? "" : $_REQUEST['h'];
 	if(!preg_match("/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/", $host_name, $matches) &&
-	   !preg_match("/^[a-z\d]([a-z\d\-]{0,61}[a-z\d])?(\.[a-z\d]([a-z\d\-]{0,61}‌​[a-z\d])?)*$/i", $host_name, $matches)) {
+	   !preg_match("/^[a-z\d](?:[a-z\d\-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d\-]{0,61}[a-z\d])?)*$/i", $host_name, $matches)) {
 			$feedback_to_client['ajx_output']		   .= _negative_feedback("invalid hostname specified");
 			$feedback_to_client['ajx_success']			= (bool)false;
 			$feedback_to_client['ajx_nextstep']			= 0;
