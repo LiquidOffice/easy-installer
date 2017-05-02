@@ -15,24 +15,24 @@ if(stripos($host_name, "secure.ilia.ch") !== false ||
    stripos($host_name, "www.ilia.ch") !== false ||
    stripos($host_name, "www.liquid-office") !== false)
 {
-	error_log("\$hostname = $hostname and MUST NOT INCLUDE internal servers");
+	trigger_error("\$hostname = $hostname and MUST NOT INCLUDE internal servers", E_USER_ERROR);
 	die("<p>please install directly</p>");
 }
 	
 $test_result								= test_connection($host_name, $port);
 
 if($test_result !== true) {
-	error_log("\$test_result should be true, but is $test_result => could not connect to host - aborting");
+	trigger_error("\$test_result should be true, but is $test_result => could not connect to host - aborting", E_USER_ERROR);
 	die("<p>could not connect to host</p>");
 }
 
 if(empty($user_name)) {
-	error_log("\$user_name should not be empty, BUT IS EMPTY => could not connect to host - aborting");
+	trigger_error("\$user_name should not be empty, BUT IS EMPTY => could not connect to host - aborting", E_USER_ERROR);
 	die("<p>could not connect to host</p>");
 }
 	
 if(empty($password)) {
-	error_log("\$password should not be empty, BUT IS EMPTY => could not connect to host - aborting");
+	trigger_error("\$password should not be empty, BUT IS EMPTY => could not connect to host - aborting", E_USER_ERROR);
 	die("<p>could not connect to host</p>");
 }
 
@@ -195,11 +195,11 @@ function check_whether_ptt_is_fo_path($path_to_test) {
 
 // taken over from easy_installation.php
 function test_connection($host_name, $port) {
-	$time_out_in_seconds					= 4;
+	$time_out_in_seconds							= 4;
 	
-	$test_connection_command				= "nc -zvw $time_out_in_seconds $host_name $port 2>&1";
+	$test_connection_command						= "nc -zvw $time_out_in_seconds $host_name $port 2>&1";
 	$output									= array();
-	$part_of_message_indicating_success		= "succeeded";
+	$part_of_message_indicating_success					= "succeeded";
 
 	exec($test_connection_command, $output, $return_value);
 	$output									= implode($output, " ");
@@ -208,8 +208,8 @@ function test_connection($host_name, $port) {
 		return true;
 	else {
 		$debug								= "command = '$test_connection_command'\n";
-		$debug							   .= "return value = '$return_value'\n";
-		$debug							   .= "output = '$output'\n";
+		$debug							       .= "return value = '$return_value'\n";
+		$debug							       .= "output = '$output'\n";
 
 		return $debug;		
 	}
