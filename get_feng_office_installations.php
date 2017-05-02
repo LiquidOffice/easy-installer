@@ -4,10 +4,10 @@
 //ini_set("display_errors", true);	//DEBUG
 header("Access-Control-Allow-Origin: *");
 
-$host_name									= $_REQUEST['h'];
-$user_name									= !empty($_REQUEST['u']) && ctype_alnum($_REQUEST['u']) ? $_REQUEST['u'] : "";	// check for security reasons
-$password									= empty($_REQUEST['s']) ? "" : $_REQUEST['s'];	// s from secret
-$port										= !empty($_REQUEST['p']) && ctype_digit($_REQUEST['p']) ? $_REQUEST['p'] : "";
+$host_name								= $_REQUEST['h'];
+$user_name								= !empty($_REQUEST['u']) && ctype_alnum($_REQUEST['u']) ? $_REQUEST['u'] : "";	// check for security reasons
+$password								= empty($_REQUEST['s']) ? "" : $_REQUEST['s'];	// s from secret
+$port									= !empty($_REQUEST['p']) && ctype_digit($_REQUEST['p']) ? $_REQUEST['p'] : "";
 $path_to_test								= empty($_REQUEST['ptt']) ? "" : $_REQUEST['ptt'];
 $return_json								= empty($_REQUEST['j']) ? false : true;
 
@@ -15,16 +15,24 @@ if(stripos($host_name, "secure.ilia.ch") !== false ||
    stripos($host_name, "www.ilia.ch") !== false ||
    stripos($host_name, "www.liquid-office") !== false)
 {
+	error_log("\$hostname = $hostname and MUST NOT INCLUDE internal servers");
 	die("<p>please install directly</p>");
 }
 	
 $test_result								= test_connection($host_name, $port);
-//print "test_result = " . $test_result;	//DEBUG
 
-if($test_result !== true ||
-   empty($user_name) ||
-   empty($password))
-{
+if($test_result !== true) {
+	error_log("\$test_result should be true, but is $test_result => could not connect to host - aborting");
+	die("<p>could not connect to host</p>");
+}
+
+if(empty($user_name)) {
+	error_log("\$user_name should not be empty, BUT IS EMPTY => could not connect to host - aborting");
+	die("<p>could not connect to host</p>");
+}
+	
+if(empty($password)) {
+	error_log("\$password should not be empty, BUT IS EMPTY => could not connect to host - aborting");
 	die("<p>could not connect to host</p>");
 }
 
